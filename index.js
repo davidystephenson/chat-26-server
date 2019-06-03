@@ -2,49 +2,33 @@ const express = require('express')
 const socketIo = require('socket.io')
 const cors = require('cors')
 const bodyParser = require('body-parser')
+const dispatcher = require('./dispatcher')
+const routing = require('./routing')
+
+const messages = ['goodbye']
 
 const app = express()
 app.use(cors())
 app.use(bodyParser.json())
 
-function dispatchMessages () {
-  const action = {
-    type: 'MESSAGES',
-    payload: messages
-  }
-  io.emit('action', action)
-}
+const server = app.listen(4000, onListen)
+const io = socketIo.listen(server)
 
-app.post('/message', (request, response) => {
-  const { message } = request.body
-  // const message = request.body.message
+const dispatch = dispatcher(io)
 
-  console.log('message test:', message)
-
-  messages.push(message)
-
-  dispatchMessages()
-
-  response.status(201).send(message)
-})
+const router = routing(dispatch, messages)
+app.use(router)
 
 function onListen () {
   console.log('Listening on port 4000')
 }
-
-const server = app.listen(4000, onListen)
-// app.listen(4000, () => console.log("Listening..."))
-//
-const io = socketIo.listen(server)
-
-const messages = ['goodbye']
 
 io.on(
   'connection',
   client => {
     console.log('client.id test:', client.id)
 
-    dispatchMessages()
+    dispatch(messages)
 
     client.on(
       'disconnect',
